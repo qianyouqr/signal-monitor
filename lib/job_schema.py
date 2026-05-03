@@ -54,6 +54,7 @@ DEFAULT_JOB: Dict[str, Any] = {
     "report": {
         "template_path": "../../templates/default_report.md",
         "output_dir": "output/reports",
+        "report_mode": "overwrite",
     },
 }
 

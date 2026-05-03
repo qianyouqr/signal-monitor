@@ -100,10 +100,17 @@ def render_default(job: Dict, result: Dict, analysis: str = "") -> str:
 
 
 def write_report(job: Dict, result: Dict, base_dir: str, analysis: str = "") -> str:
-    out_dir_rel = (job.get("report") or {}).get("output_dir") or "output/reports"
+    report_cfg = job.get("report") or {}
+    out_dir_rel = report_cfg.get("output_dir") or "output/reports"
     out_dir = os.path.normpath(os.path.join(base_dir, out_dir_rel))
     os.makedirs(out_dir, exist_ok=True)
-    fname = f"{result.get('run_date','undated')}_{job['id']}.md"
+    run_date = result.get('run_date', 'undated')
+    report_mode = report_cfg.get("report_mode", "overwrite")
+    if report_mode == "incremental":
+        ts = datetime.now().strftime("%H%M%S")
+        fname = f"{run_date}_{ts}_{job['id']}.md"
+    else:
+        fname = f"{run_date}_{job['id']}.md"
     path = os.path.join(out_dir, fname)
     with open(path, "w", encoding="utf-8") as f:
         f.write(render_default(job, result, analysis))

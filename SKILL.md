@@ -40,6 +40,7 @@ metadata:
    ├─ 推送测试 → cli test-push <id>
    ├─ 改字段   → cli set <id> <jsonpath> <value>   （写入前自动备份）
    ├─ 加资产   → cli set <id> asset_source.assets += {...}  或改 Excel
+   ├─ 创建资产池文件 → 见「资产参考库 & 资产池文件创建」章节
    ├─ 停用资产 → cli disable-asset <id> <ticker>
    ├─ 加 job   → cli add <id> --from preset:<name|file.json>
    ├─ 删 job   → cli delete <id>
@@ -136,7 +137,8 @@ python {SKILL_ROOT}/scripts/cli.py <command> [...args]
   },
   "report": {
     "template_path": "../../templates/default_report.md",
-    "output_dir": "output/reports"
+    "output_dir": "output/reports",
+    "report_mode": "overwrite"
   }
 }
 ```
@@ -146,6 +148,9 @@ python {SKILL_ROOT}/scripts/cli.py <command> [...args]
   - `excel/csv` → `path` 指向文件（相对 job 目录或绝对路径）
   - `inline` → `assets: [{ticker, company}]`
   - `disabled_tickers[]` → 始终被排除，不删数据，方便恢复
+- `report.report_mode` ← 报告文件命名策略
+  - `overwrite`（默认）：同一天只保留一个文件，格式 `YYYY-MM-DD_<id>.md`，适合每日定时一次的场景
+  - `incremental`：每次运行生成独立文件，格式 `YYYY-MM-DD_HHMMSS_<id>.md`，适合盘中多次运行的场景
 - `signal.category` ← **每个 job 必填**，用于推送/报告标注信号类型
   - `direction`: `buy`（🟢 买入信号）/ `sell`（🔴 卖出信号）/ `watch`（🟡 观察信号）
   - `label`: 自由文本子类型，如 `抄底` / `突破` / `金叉` / `乖离超跌` / `止损`
@@ -281,3 +286,76 @@ CLI `run` 启动会比对 `asset_source.path` 文件 与 `state/<id>/assets_snap
 ```
 
 切换方法：`cli.py set <id> signal.formulas '<上方 JSON 数组>'` → `cli.py validate <id>`
+
+---
+
+## 资产参考库 & 资产池文件创建
+
+当用户要求「资产池换成 XX 市场」或「帮我创建 N 个 XX 股票的资产池文件」时，agent 按以下流程操作。
+
+### 数据来源
+
+资产信息来自 `quant-buddy-skill` 的内置资产库，路径（相对 quant-buddy-skill 根目录）：
+
+```
+presets/assets_db/
+├── stock_a.yaml    # A 股（沪深京）
+├── stock_hk.yaml   # 港股
+└── stock_us.yaml   # 美股（NASDAQ .O / NYSE .N / AMEX .A）
+```
+
+**quant-buddy-skill 根目录查找顺序**（与 Step 0 相同）：
+```
+{SKILL_ROOT}/../quant-buddy-skill/
+~/.claude/skills/quant-buddy-skill/
+~/.agents/skills/quant-buddy-skill/
+~/.openclaw/skills/quant-buddy-skill/
+~/.codex/skills/quant-buddy-skill/
+{cwd}/.{claude|openclaw|codex|github}/skills/quant-buddy-skill/
+```
+
+### YAML 格式说明
+
+```
+stock | 公司名（可含中文） | 代码.交易所 |
+```
+
+- `.O` = NASDAQ，`.N` = NYSE，`.A` = AMEX
+- `#` 开头行为注释，忽略
+- 示例：`stock | 苹果公司 | AAPL.O |`，`stock | 微软 | MSFT.O |`
+
+### 创建资产池文件的 Agent 步骤
+
+1. **找到对应 yaml** — 按市场选择：`stock_a.yaml` / `stock_hk.yaml` / `stock_us.yaml`
+2. **解析 yaml** — 读取所有非注释行，提取 `(公司名, 代码)` 对
+3. **筛选** — 按用户指定的数量和板块偏好（如「覆盖科技/金融/医疗/消费/能源等主要板块」）选股，优先选大市值、流动性好的代表性股票
+4. **生成 assets.xlsx** — 两列、**无表头行**：第一列公司名，第二列代码（含交易所后缀，如 `AAPL.O`）
+
+   ```python
+   # 生成 assets.xlsx 的参考脚本
+   import openpyxl
+   wb = openpyxl.Workbook()
+   ws = wb.active
+   for company, ticker in selected_assets:  # [("苹果公司", "AAPL.O"), ...]
+       ws.append([company, ticker])
+   wb.save("jobs/<job_id>/assets.xlsx")
+   ```
+
+5. **更新 job.json** — 确保 `asset_source.type = "excel"`，`asset_source.path = "assets.xlsx"`
+
+   ```bash
+   python scripts/cli.py set <job_id> asset_source.type excel
+   python scripts/cli.py set <job_id> asset_source.path assets.xlsx
+   ```
+
+6. **验证** — 跑 `cli.py run <job_id> --dry-run`，检查 stdout JSON 中 `summary.total_assets` 是否等于预期数量
+
+### report_mode 与盘中多次运行
+
+当监控设置为盘中多次运行（如每小时一次，`schedule.cron = "*/60 * * * *"`）时，建议将 `report.report_mode` 设为 `incremental`，使每次运行生成独立的带时间戳文件（格式 `YYYY-MM-DD_HHMMSS_<id>.md`），避免同日结果被覆盖：
+
+```bash
+python scripts/cli.py set <job_id> report.report_mode incremental
+python scripts/cli.py set <job_id> schedule.cron "*/60 * * * *"
+python scripts/cli.py apply-schedule <job_id>
+```
