@@ -7,7 +7,7 @@
   "signal": {
     "category": {"direction": "buy", "label": "金叉", "description": "MACD DIF 上穿 DEA"},
     "formulas": [
-      {"name": "资产池收盘价", "expression": "资产池构造({ASSETS}) * \"全市场每日收盘价（分钟刷新）\""},
+      {"name": "资产池收盘价", "expression": "资产池构造({ASSETS}) * \"全市场每日收盘价\""},
       {"name": "EMA12",        "expression": "EMA(\"资产池收盘价\", 12)"},
       {"name": "EMA26",        "expression": "EMA(\"资产池收盘价\", 26)"},
       {"name": "DIF",          "expression": "\"EMA12\" - \"EMA26\""},

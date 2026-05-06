@@ -31,6 +31,7 @@ def validate(job: Dict, assets: List[Dict]) -> Dict:
             formulas=formulas,
             begin_date=int(begin.strftime("%Y%m%d")),
             include_description=False,
+            use_minute_data=True,
         )
     except Exception as e:
         return {"ok": False, "reason": f"runMultiFormula 异常: {type(e).__name__}: {e}",

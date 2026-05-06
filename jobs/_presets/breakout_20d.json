@@ -7,7 +7,7 @@
   "signal": {
     "category": {"direction": "buy", "label": "突破", "description": "突破近 20 日新高，动量买入"},
     "formulas": [
-      {"name": "资产池收盘价", "expression": "资产池构造({ASSETS}) * \"全市场每日收盘价（分钟刷新）\""},
+      {"name": "资产池收盘价", "expression": "资产池构造({ASSETS}) * \"全市场每日收盘价\""},
       {"name": "前20日高",     "expression": "最大值(NDay(\"资产池收盘价\", 1), 20)"},
       {"name": "信号",         "expression": "\"资产池收盘价\" > \"前20日高\""}
     ],

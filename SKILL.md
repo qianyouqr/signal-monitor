@@ -100,7 +100,7 @@ python {SKILL_ROOT}/scripts/cli.py <command> [...args]
   "signal": {
     "category": {"direction": "buy", "label": "抄底", "description": "MA20 - 2σ 跌破"},
     "formulas": [
-      {"name": "资产池收盘价", "expression": "资产池构造({ASSETS}) * \"全市场每日收盘价（分钟刷新）\""},
+      {"name": "资产池收盘价", "expression": "资产池构造({ASSETS}) * \"全市场每日收盘价\""},
       {"name": "MA20",         "expression": "平均(\"资产池收盘价\", 20)"},
       {"name": "下轨",         "expression": "\"MA20\" - 2 * 标准差(\"资产池收盘价\", 20)"},
       {"name": "信号",         "expression": "\"资产池收盘价\" < \"下轨\""}
@@ -278,7 +278,7 @@ CLI `run` 启动会比对 `asset_source.path` 文件 与 `state/<id>/assets_snap
 
 ```json
 [
-  {"name": "资产池收盘价", "expression": "资产池构造({ASSETS}) * \"全市场每日收盘价（分钟刷新）\""},
+  {"name": "资产池收盘价", "expression": "资产池构造({ASSETS}) * \"全市场每日收盘价\""},
   {"name": "MA60",         "expression": "平均(\"资产池收盘价\", 60)"},
   {"name": "下轨60",       "expression": "\"MA60\" - 2 * 标准差(\"资产池收盘价\", 60)"},
   {"name": "信号",         "expression": "\"资产池收盘价\" < \"下轨60\""}
